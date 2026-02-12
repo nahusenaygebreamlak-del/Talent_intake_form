@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Test files
+reproduce_issue.js
+test_*.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
