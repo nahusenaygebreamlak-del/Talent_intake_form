@@ -75,10 +75,6 @@ function App() {
   };
 
   const validateStep = (stepIndex: number) => {
-    // VALIDATION DISABLED FOR TESTING
-    return true;
-
-    /* ORIGINAL VALIDATION CODE - COMMENTED OUT FOR TESTING
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
@@ -129,7 +125,6 @@ function App() {
     }
 
     return isValid;
-    */
   };
 
   const handleNext = () => {
