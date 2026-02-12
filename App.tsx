@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   User, Mail, Phone, Briefcase, GraduationCap, DollarSign,
-  Linkedin, Globe, Upload, CheckCircle, ArrowRight, ArrowLeft, Check, UserCircle, LogOut
+  Linkedin, Globe, Upload, CheckCircle, ArrowRight, ArrowLeft, Check, UserCircle, LogOut, Settings
 } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -648,14 +648,14 @@ function App() {
         </div>
       </div>
 
-      {/* Profile Icon - Bottom Left */}
+      {/* Settings Icon - Bottom Left */}
       <div className="fixed bottom-6 left-6 z-50">
         <div className="relative">
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="w-14 h-14 bg-gradient-to-tr from-blue-600 to-blue-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+            className="w-14 h-14 bg-white border-2 border-slate-200 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 hover:border-slate-300 transition-all"
           >
-            <UserCircle className="w-7 h-7 text-white" />
+            <Settings className="w-6 h-6 text-slate-600" />
           </button>
 
           {/* Dropdown Menu */}
