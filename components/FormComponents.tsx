@@ -1,5 +1,5 @@
 import React from 'react';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, Check } from 'lucide-react';
 
 // --- Types ---
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -172,17 +172,60 @@ export const MultiSelectChips = ({ label, options, selectedValues, onChange, max
   </div>
 );
 
-export const FileUpload = ({ label, onChange, fileName, accept = ".pdf,.doc,.docx", error }: { label: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, fileName?: string, accept?: string, error?: string }) => (
+export const FileUpload = ({
+  label,
+  onChange,
+  fileName,
+  accept = ".pdf,.doc,.docx",
+  error,
+  progress = 0,
+  isUploading = false,
+  uploadSuccess = false
+}: {
+  label: string,
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
+  fileName?: string,
+  accept?: string,
+  error?: string,
+  progress?: number,
+  isUploading?: boolean,
+  uploadSuccess?: boolean
+}) => (
   <div className="mb-4">
     <label className="text-sm font-medium text-slate-700 mb-1.5 block ml-1">{label}</label>
-    <div className="flex items-center justify-center w-full">
-      <label className={`flex flex-col items-center justify-center w-full h-32 border-2 ${error ? 'border-red-500 bg-red-50' : 'border-slate-300 bg-white hover:border-slate-400'} border-dashed rounded-md cursor-pointer transition-colors`}>
+    <div className="flex flex-col items-center justify-center w-full">
+      <label className={`flex flex-col items-center justify-center w-full h-32 border-2 ${error ? 'border-red-500 bg-red-50' : uploadSuccess ? 'border-accent bg-accent/5' : 'border-slate-300 bg-white hover:border-slate-400'} border-dashed rounded-md cursor-${isUploading ? 'not-allowed' : 'pointer'} transition-colors relative transition-all`}>
         <div className="flex flex-col items-center justify-center pt-5 pb-6">
-          <svg className={`w-8 h-8 mb-3 ${error ? 'text-red-400' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-          <p className={`text-sm ${error ? 'text-red-500' : 'text-slate-500'}`}><span className="font-semibold">Click to upload</span> or drag and drop</p>
+          {uploadSuccess ? (
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center mb-2">
+                <Check className="w-6 h-6 text-accent" />
+              </div>
+              <p className="text-sm font-semibold text-accent">Successfully Uploaded</p>
+            </div>
+          ) : isUploading ? (
+            <div className="flex flex-col items-center w-full px-8">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent shadow-sm"></div>
+                <span className="text-sm font-medium text-slate-600">Uploading CV...</span>
+              </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-300 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="text-xs text-slate-400 mt-2">{progress}% complete</p>
+            </div>
+          ) : (
+            <>
+              <svg className={`w-8 h-8 mb-3 ${error ? 'text-red-400' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+              <p className={`text-sm ${error ? 'text-red-500' : 'text-slate-500'}`}><span className="font-semibold">Click to upload</span> or drag and drop</p>
+            </>
+          )}
           <p className="text-xs text-slate-400 mt-1">{fileName ? `Selected: ${fileName}` : accept.replace(/,/g, ', ')}</p>
         </div>
-        <input type="file" className="hidden" onChange={onChange} accept={accept} />
+        <input type="file" className="hidden" onChange={onChange} accept={accept} disabled={isUploading} />
       </label>
     </div>
     {error && <span className="text-red-500 text-xs mt-1 ml-1">{error}</span>}

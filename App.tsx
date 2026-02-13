@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-import { FormData } from './types';
+import { FormData, Application } from './types';
 import {
   ROLES, EXPERIENCE_RANGES, EMPLOYMENT_STATUS, START_DATES,
   EDUCATION_LEVELS, SALARY_RANGES, WORK_TYPES, ROLE_SKILLS, INITIAL_DATA
@@ -16,11 +16,13 @@ import {
 } from './components/FormComponents';
 import { AdminDashboard } from './components/AdminDashboard';
 import { LoginForm } from './components/LoginForm';
+import { CandidateProfile } from './components/CandidateProfile';
 
 import { supabase } from './supabase';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'form' | 'admin' | 'login'>('form');
+  const [currentView, setCurrentView] = useState<'form' | 'admin' | 'login' | 'public-profile'>('form');
+  const [publicCandidate, setPublicCandidate] = useState<Application | null>(null);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -31,15 +33,56 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);  // Loading state
   const totalSteps = 6;
 
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [cvFilePath, setCvFilePath] = useState<string | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Check auth state on mount
+  // Check auth state and handle deep links
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    const params = new URLSearchParams(window.location.search);
+    const candidateId = params.get('candidate');
+
+    const handleDeepLink = async (id: string) => {
+      // First try to check if user is logged in
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        setUser(session.user);
+        setCurrentView('admin');
+      } else {
+        // Fetch candidate as public
+        try {
+          const { data, error } = await supabase
+            .from('job_applications')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+          if (data) {
+            setPublicCandidate(data);
+            setCurrentView('public-profile');
+          } else {
+            console.warn('Candidate not found or restricted');
+            setCurrentView('form');
+          }
+        } catch (err) {
+          console.error('Error fetching public candidate:', err);
+          setCurrentView('form');
+        }
+      }
       setAuthLoading(false);
-    });
+    };
+
+    if (candidateId) {
+      handleDeepLink(candidateId);
+    } else {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user ?? null);
+        setAuthLoading(false);
+      });
+    }
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -111,11 +154,12 @@ function App() {
 
       case 4: // Professional Presence
         if (!formData.cvFile) newErrors.cvFile = 'Please upload your CV';
+        else if (isUploading) newErrors.cvFile = 'Upload in progress...';
+        else if (!cvFilePath) newErrors.cvFile = 'Upload failed, please try again';
         break;
 
       case 5: // Commitment
         if (!formData.commitmentAgreed) newErrors.commitmentAgreed = 'You must agree to proceed';
-        // priorityReason is now optional
         break;
     }
 
@@ -157,24 +201,9 @@ function App() {
     setIsSubmitting(true);
 
     try {
-      let cvFilePath = null;
-
-      // 1. Upload CV File to Supabase Storage
-      if (formData.cvFile) {
-        console.log('Uploading CV file...');
-        const file = formData.cvFile;
-        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('cvs')
-          .upload(fileName, file);
-
-        if (uploadError) {
-          console.error('CV Upload error:', uploadError);
-          throw new Error(`Failed to upload CV: ${uploadError.message}`);
-        }
-        cvFilePath = fileName;
-        console.log('✅ CV uploaded successfully:', fileName);
+      // 1. CV is already uploaded
+      if (!cvFilePath) {
+        throw new Error("CV file is not uploaded yet.");
       }
 
       // 2. Insert record into database
@@ -440,9 +469,44 @@ function App() {
           label="Upload updated CV"
           fileName={formData.cvFile?.name}
           error={errors.cvFile}
-          onChange={(e) => {
-            if (e.target.files?.[0]) {
-              updateData({ cvFile: e.target.files[0] });
+          progress={uploadProgress}
+          isUploading={isUploading}
+          uploadSuccess={!!cvFilePath}
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              updateData({ cvFile: file });
+              setCvFilePath(null);
+              setIsUploading(true);
+              setUploadProgress(10);
+
+              try {
+                const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+
+                // Simulate progress since standard upload doesn't provide it
+                const progressInterval = setInterval(() => {
+                  setUploadProgress(prev => (prev < 90 ? prev + 5 : prev));
+                }, 200);
+
+                const { error: uploadError } = await supabase.storage
+                  .from('cvs')
+                  .upload(fileName, file);
+
+                clearInterval(progressInterval);
+
+                if (uploadError) {
+                  throw uploadError;
+                }
+
+                setUploadProgress(100);
+                setCvFilePath(fileName);
+                delete errors.cvFile;
+              } catch (err) {
+                console.error('CV Upload error:', err);
+                setErrors(prev => ({ ...prev, cvFile: 'Failed to upload CV. Please try again.' }));
+              } finally {
+                setIsUploading(false);
+              }
             }
           }}
         />
@@ -531,17 +595,37 @@ function App() {
     return <AdminDashboard onBackToForm={() => setCurrentView('form')} onLogout={handleLogout} />;
   }
 
+  // Render public profile view
+  if (currentView === 'public-profile' && publicCandidate) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center font-sans relative">
+        <CandidateProfile
+          application={publicCandidate}
+          onClose={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('candidate');
+            window.history.replaceState({}, '', url);
+            setCurrentView('form');
+          }}
+          onRate={() => { }} // Public users cannot rate
+        />
+        {/* Simple return to form button if modal is closed or for accessibility */}
+        {!publicCandidate && setCurrentView('form')}
+      </div>
+    );
+  }
+
   // Check if submitted AFTER all hooks have been called
   if (isSubmitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center p-4 md:p-6 font-sans">
         <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-12 text-center">
-          <div className="mx-auto w-24 h-24 bg-gradient-to-tr from-green-400 to-green-600 rounded-full flex items-center justify-center mb-8 shadow-lg">
+          <div className="mx-auto w-24 h-24 bg-gradient-to-tr from-accent to-accent/80 rounded-full flex items-center justify-center mb-8 shadow-lg">
             <CheckCircle className="w-12 h-12 text-white" strokeWidth={2.5} />
           </div>
           <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Application Sent!</h2>
           <p className="text-slate-600 mb-10 text-lg leading-relaxed">
-            Your journey with <span className="font-bold text-blue-600">Afriwork</span> starts here. We've received your profile and will be in touch soon.
+            Your journey with <span className="font-bold text-primary">Afriwork</span> starts here. We've received your profile and will be in touch soon.
           </p>
           <div className="flex justify-center">
             <button
@@ -550,7 +634,7 @@ function App() {
                 setCurrentStep(0);
                 setFormData(INITIAL_DATA);
               }}
-              className="inline-flex items-center px-10 py-4 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 transform hover:-translate-y-1 transition-all shadow-xl hover:shadow-2xl active:scale-95"
+              className="inline-flex items-center px-10 py-4 rounded-2xl bg-primary text-white font-bold hover:bg-primary-dark transform hover:-translate-y-1 transition-all shadow-xl hover:shadow-2xl active:scale-95"
             >
               Start New Application
             </button>
@@ -569,7 +653,7 @@ function App() {
           <p className="text-slate-500 text-sm md:text-base">Talent Intake Form</p>
         </div>
         <div className="text-right">
-          <span className="text-sm font-semibold text-primary block">Step {currentStep + 1} of {totalSteps}</span>
+          <span className="text-sm font-semibold text-accent block">Step {currentStep + 1} of {totalSteps}</span>
           <span className="text-xs text-slate-400">Complete all sections</span>
         </div>
       </div>
@@ -577,7 +661,7 @@ function App() {
       <div className="w-full max-w-2xl relative">
         <div className="absolute -top-3 left-2 right-2 h-1.5 bg-slate-200 rounded-full overflow-hidden z-10">
           <div
-            className="h-full bg-primary transition-all duration-500 ease-out rounded-full"
+            className="h-full bg-accent transition-all duration-500 ease-out rounded-full"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -625,7 +709,7 @@ function App() {
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className={`flex items-center px-8 py-3 rounded-xl bg-green-600 text-white shadow-lg hover:bg-green-700 hover:shadow-green-600/20 hover:-translate-y-0.5 transition-all font-semibold ${isSubmitting ? 'opacity-75 cursor-not-allowed' : ''}`}
+              className={`flex items-center px-8 py-3 rounded-xl bg-primary text-white shadow-lg hover:bg-primary-dark hover:shadow-primary/20 hover:-translate-y-0.5 transition-all font-semibold ${isSubmitting ? 'opacity-75 cursor-not-allowed' : ''}`}
             >
               {isSubmitting ? 'Submitting...' : 'Submit Application'}
               {!isSubmitting && <CheckCircle className="w-4 h-4 ml-2" />}
@@ -634,10 +718,11 @@ function App() {
             <button
               type="button"
               onClick={handleNext}
-              className="flex items-center px-8 py-3 rounded-xl bg-primary text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 hover:shadow-blue-600/30 hover:-translate-y-0.5 transition-all font-semibold"
+              disabled={isUploading}
+              className={`flex items-center px-8 py-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-dark hover:shadow-primary/30 hover:-translate-y-0.5 transition-all font-semibold ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              Next Step
-              <ArrowRight className="w-4 h-4 ml-2" />
+              {isUploading ? 'Uploading...' : 'Next Step'}
+              {!isUploading && <ArrowRight className="w-4 h-4 ml-2" />}
             </button>
           )}
         </div>
@@ -672,7 +757,7 @@ function App() {
                     </div>
                     <button
                       onClick={handleProfileClick}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-primary/10 hover:text-primary rounded-lg transition-colors"
                     >
                       <UserCircle className="w-4 h-4" />
                       Admin Dashboard
@@ -688,7 +773,7 @@ function App() {
                 ) : (
                   <button
                     onClick={handleProfileClick}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-primary/10 hover:text-primary rounded-lg transition-colors"
                   >
                     <LogOut className="w-4 h-4 rotate-180" />
                     Admin Login

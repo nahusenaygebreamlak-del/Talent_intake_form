@@ -51,6 +51,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
 
             setApplications(data || []);
             setFilteredApplications(data || []);
+
+            // Handle deep linking to a candidate if ID is in URL
+            const params = new URLSearchParams(window.location.search);
+            const candidateId = params.get('candidate');
+            if (candidateId && data) {
+                const candidate = data.find(app => app.id === candidateId);
+                if (candidate) {
+                    setSelectedCandidate(candidate);
+                }
+            }
         } catch (err: any) {
             console.error('Error fetching applications:', err);
             setError(err.message || 'Failed to load applications');
@@ -106,7 +116,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
@@ -121,17 +131,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                     <div className="space-y-10">
                         <div>
                             <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Overview</h3>
-                            <button className="w-full flex items-center justify-between px-4 py-3 bg-white border border-slate-100/50 shadow-sm text-blue-600 rounded-xl font-bold transition-all group">
+                            <button className="w-full flex items-center justify-between px-4 py-3 bg-white border border-slate-100/50 shadow-sm text-primary rounded-xl font-bold transition-all group">
                                 <div className="flex items-center gap-3">
                                     <ClipboardList className="w-4 h-4" />
                                     <span className="text-sm">Applications</span>
                                 </div>
-                                <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-1 rounded-full">{applications.length}</span>
+                                <span className="text-[10px] bg-accent/10 text-accent px-2 py-1 rounded-full">{applications.length}</span>
                             </button>
 
                             <button
                                 onClick={onBackToForm}
-                                className="w-full flex items-center gap-3 px-4 py-3 mt-4 text-slate-400 hover:text-blue-600 hover:bg-white border border-transparent hover:border-slate-100/50 hover:shadow-sm rounded-xl font-bold transition-all group"
+                                className="w-full flex items-center gap-3 px-4 py-3 mt-4 text-slate-400 hover:text-primary hover:bg-white border border-transparent hover:border-slate-100/50 hover:shadow-sm rounded-xl font-bold transition-all group"
                             >
                                 <UsersIcon className="w-4 h-4" />
                                 <span className="text-sm">Back to Intake Form</span>
@@ -156,7 +166,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                 {/* Header - Simple */}
                 <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-10 shrink-0">
                     <div className="flex items-center gap-3">
-                        <UsersIcon className="w-5 h-5 text-blue-600" />
+                        <UsersIcon className="w-5 h-5 text-accent" />
                         <h2 className="text-lg font-bold text-slate-800">Talent Pool Management</h2>
                     </div>
                     <button
@@ -173,7 +183,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                     <div className="bg-white rounded-3xl p-8 mb-10 shadow-sm border border-slate-200">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-2">
-                                <Filter className="w-4 h-4 text-blue-600" />
+                                <Filter className="w-4 h-4 text-accent" />
                                 <h3 className="text-sm font-bold text-slate-800">Advanced Filters</h3>
                             </div>
                             {Object.values(filters).some(v => v !== '' && v !== 0) && (
@@ -195,7 +205,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                                     placeholder="Search name, email, or phone..."
                                     value={filters.searchQuery}
                                     onChange={e => setFilters({ ...filters, searchQuery: e.target.value })}
-                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600/50 outline-none transition-all"
+                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-primary/10 focus:border-primary/50 outline-none transition-all"
                                 />
                             </div>
 
@@ -293,7 +303,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                                             </td>
                                             <td className="px-8 py-5 text-center">
                                                 {app.role ? (
-                                                    <span className="inline-block px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                                                    <span className="inline-block px-2.5 py-1 bg-primary/10 text-primary rounded-lg text-[10px] font-bold uppercase tracking-wider">
                                                         {app.role}
                                                     </span>
                                                 ) : (
@@ -340,7 +350,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                 selectedCandidate && (
                     <CandidateProfile
                         application={selectedCandidate}
-                        onClose={() => setSelectedCandidate(null)}
+                        onClose={() => {
+                            setSelectedCandidate(null);
+                            // Clear URL param when closing
+                            const url = new URL(window.location.href);
+                            url.searchParams.delete('candidate');
+                            window.history.replaceState({}, '', url);
+                        }}
                         onRate={(r) => handleRate(selectedCandidate.id, r)}
                     />
                 )

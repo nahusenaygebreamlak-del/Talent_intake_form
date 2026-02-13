@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: 214 13 118;
+    /* #D60D76 */
+    --color-primary-dark: 180 10 100;
+    /* Darker shade for hover */
+    --color-accent: 231 133 47;
+    /* #E7852F */
+    --color-secondary: 231 133 47;
+    /* #E7852F (using accent for secondary as well) */
+  }
+}
+
+.bg-primary {
+  background-color: rgb(var(--color-primary));
+}
+
+.text-primary {
+  color: rgb(var(--color-primary));
+}
+
+.bg-primary-dark {
+  background-color: rgb(var(--color-primary-dark));
+}
+
+.hover\:bg-primary-dark:hover {
+  background-color: rgb(var(--color-primary-dark));
+}
+
+.text-primary-dark {
+  color: rgb(var(--color-primary-dark));
+}
+
+.border-primary {
+  border-color: rgb(var(--color-primary));
+}
+
+.hover\:bg-primary:hover {
+  background-color: rgb(var(--color-primary));
+}
+
+.focus\:border-primary:focus {
+  border-color: rgb(var(--color-primary));
+}
+
+.focus\:ring-primary\/30:focus {
+  --tw-ring-color: rgb(var(--color-primary) / 0.3);
+}
+
+.shadow-primary\/20 {
+  --tw-shadow-color: rgb(var(--color-primary) / 0.2);
+  --tw-shadow: var(--tw-shadow-colored);
+}
+
+.shadow-primary\/30 {
+  --tw-shadow-color: rgb(var(--color-primary) / 0.3);
+  --tw-shadow: var(--tw-shadow-colored);
+}
+
+.bg-accent {
+  background-color: rgb(var(--color-accent));
+}
+
+.text-accent {
+  color: rgb(var(--color-accent));
+}
+
+.border-accent {
+  border-color: rgb(var(--color-accent));
+}

@@ -42,7 +42,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onCancel }) => 
             <div className="w-full max-w-md">
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <div className="w-16 h-16 bg-gradient-to-tr from-primary to-primary-dark rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                         <LogIn className="w-8 h-8 text-white" />
                     </div>
                     <h1 className="text-3xl font-bold text-slate-900 mb-2">Admin Login</h1>
@@ -63,7 +63,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onCancel }) => 
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="admin@example.com"
                                     required
-                                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/20 outline-none transition-all"
+                                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/20 outline-none transition-all"
                                 />
                             </div>
                         </div>
@@ -79,7 +79,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onCancel }) => 
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••"
                                     required
-                                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/20 outline-none transition-all"
+                                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/20 outline-none transition-all"
                                 />
                             </div>
                         </div>
@@ -104,7 +104,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onCancel }) => 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="flex-1 px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {loading ? (
                                     <>
