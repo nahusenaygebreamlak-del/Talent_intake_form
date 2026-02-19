@@ -52,6 +52,8 @@ export interface SkillSet {
 }
 
 // Admin Dashboard Types
+export type ScreeningStatus = 'pending' | 'screened_passed' | 'screened_failed';
+
 export interface Application {
   id: string;
   created_at: string;
@@ -75,6 +77,7 @@ export interface Application {
   priority_reason: string | null;
   cv_file_path: string | null;
   rating: number | null;
+  screening_status: ScreeningStatus | null;
 }
 
 export interface FilterState {
@@ -85,4 +88,5 @@ export interface FilterState {
   employmentStatus: string;
   workType: string;
   minRating: number;
+  screeningStatus: string;
 }

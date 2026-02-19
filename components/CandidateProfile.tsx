@@ -142,6 +142,7 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ application,
                                         {application.rating ? `${application.rating} / 5 Stars` : 'Pending Review'}
                                     </span>
                                 </div>
+
                             </section>
 
                             {/* Contact Info Section */}

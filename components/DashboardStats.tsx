@@ -29,6 +29,9 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ applications }) 
     });
     const topRole = Object.entries(roleCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
 
+    // Calculate pending screening
+    const pendingScreening = applications.filter(app => !app.screening_status || app.screening_status === 'pending').length;
+
     const stats = [
         {
             label: 'Total Applications',
@@ -38,11 +41,11 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ applications }) 
             textColor: 'text-primary',
         },
         {
-            label: 'New This Week',
-            value: recentApplications,
+            label: 'Pending Screening',
+            value: pendingScreening,
             icon: UserPlus,
-            color: 'bg-accent',
-            textColor: 'text-accent',
+            color: 'bg-orange-500',
+            textColor: 'text-orange-600',
         },
         {
             label: 'Average Rating',

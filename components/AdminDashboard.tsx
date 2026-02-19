@@ -3,11 +3,11 @@ import {
     Search, Filter, X, Eye,
     Briefcase, GraduationCap,
     LayoutDashboard, Users as UsersIcon, Star, RefreshCw,
-    LogOut, ClipboardList
+    LogOut, ClipboardList, Check
 } from 'lucide-react';
 import { supabase } from '../supabase';
-import { Application, FilterState } from '../types';
-import { ROLES, EXPERIENCE_RANGES, EDUCATION_LEVELS, EMPLOYMENT_STATUS, WORK_TYPES } from '../constants';
+import { Application, FilterState, ScreeningStatus } from '../types';
+import { ROLES, EXPERIENCE_RANGES, EDUCATION_LEVELS, EMPLOYMENT_STATUS, WORK_TYPES, SCREENING_STATUSES } from '../constants';
 import { StarRating } from './StarRating';
 import { CandidateProfile } from './CandidateProfile';
 
@@ -30,7 +30,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
         educationLevel: '',
         employmentStatus: '',
         workType: '',
-        minRating: 0
+        minRating: 0,
+        screeningStatus: ''
     });
 
     useEffect(() => {
@@ -91,6 +92,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
         }
     };
 
+    const handleStatusUpdate = async (id: string, status: ScreeningStatus) => {
+        try {
+            const { error: updateError } = await supabase
+                .from('job_applications')
+                .update({ screening_status: status })
+                .eq('id', id);
+
+            if (updateError) throw updateError;
+
+            const updatedApps = applications.map(app =>
+                app.id === id ? { ...app, screening_status: status } : app
+            );
+            setApplications(updatedApps);
+
+            if (selectedCandidate?.id === id) {
+                setSelectedCandidate({ ...selectedCandidate, screening_status: status });
+            }
+        } catch (err: any) {
+            console.error('Error updating status:', err);
+            alert('Failed to update status. Please make sure the database has the screening_status column.');
+        }
+    };
+
     useEffect(() => {
         let filtered = [...applications];
 
@@ -109,6 +133,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
         if (filters.employmentStatus) filtered = filtered.filter(app => app.employment_status === filters.employmentStatus);
         if (filters.workType) filtered = filtered.filter(app => app.work_type === filters.workType);
         if (filters.minRating > 0) filtered = filtered.filter(app => (app.rating || 0) >= filters.minRating);
+        if (filters.screeningStatus) filtered = filtered.filter(app => app.screening_status === filters.screeningStatus);
 
         setFilteredApplications(filtered);
     }, [filters, applications]);
@@ -188,7 +213,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                             </div>
                             {Object.values(filters).some(v => v !== '' && v !== 0) && (
                                 <button
-                                    onClick={() => setFilters({ searchQuery: '', role: '', experienceYears: '', educationLevel: '', employmentStatus: '', workType: '', minRating: 0 })}
+                                    onClick={() => setFilters({ searchQuery: '', role: '', experienceYears: '', educationLevel: '', employmentStatus: '', workType: '', minRating: 0, screeningStatus: '' })}
                                     className="text-xs font-bold text-red-500 hover:text-red-600 underline underline-offset-4"
                                 >
                                     Reset All Filters
@@ -272,6 +297,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                                 <option value="">Any Work Type</option>
                                 {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
+
+                            {/* Screening Status */}
+                            <select
+                                value={filters.screeningStatus}
+                                onChange={e => setFilters({ ...filters, screeningStatus: e.target.value })}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 outline-none hover:border-slate-300 transition-all cursor-pointer"
+                            >
+                                <option value="">All Screening Status</option>
+                                {SCREENING_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                            </select>
                         </div>
                     </div>
 
@@ -281,6 +316,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                             <thead>
                                 <tr className="bg-[#FBFBFC] border-b border-slate-100">
                                     <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Candidate</th>
+                                    <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Screening</th>
                                     <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Role</th>
                                     <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Experience</th>
                                     <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Applied Date</th>
@@ -298,7 +334,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                                             <td className="px-8 py-5">
                                                 <div>
                                                     <p className="font-bold text-slate-800 text-sm mb-0.5">{app.full_name}</p>
-                                                    <p className="text-[11px] font-medium text-slate-400">{app.email}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-[11px] font-medium text-slate-400">{app.email}</p>
+                                                        {app.screening_status && app.screening_status !== 'pending' && (
+                                                            <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase ${app.screening_status === 'screened_passed'
+                                                                ? 'bg-green-100 text-green-600'
+                                                                : 'bg-red-100 text-red-600'
+                                                                }`}>
+                                                                {app.screening_status === 'screened_passed' ? 'Passed' : 'Failed'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-5 text-center" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <button
+                                                        onClick={() => handleStatusUpdate(app.id, 'screened_passed')}
+                                                        className={`p-1.5 rounded-lg transition-all ${app.screening_status === 'screened_passed'
+                                                            ? 'bg-green-500 text-white shadow-md shadow-green-500/20'
+                                                            : 'bg-slate-50 text-slate-400 hover:bg-green-50 hover:text-green-500 border border-slate-100'
+                                                            }`}
+                                                        title="Pass Screening"
+                                                    >
+                                                        <Check className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStatusUpdate(app.id, 'screened_failed')}
+                                                        className={`p-1.5 rounded-lg transition-all ${app.screening_status === 'screened_failed'
+                                                            ? 'bg-red-500 text-white shadow-md shadow-red-500/20'
+                                                            : 'bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 border border-slate-100'
+                                                            }`}
+                                                        title="Fail Screening"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-5 text-center">
@@ -334,7 +404,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={5} className="px-8 py-20 text-center">
+                                        <td colSpan={6} className="px-8 py-20 text-center">
                                             <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No matching candidates</p>
                                         </td>
                                     </tr>

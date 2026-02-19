@@ -43,9 +43,15 @@ export const SALARY_RANGES = [
 
 export const WORK_TYPES = ["On-site", "Hybrid", "Remote", "Any"];
 
+export const SCREENING_STATUSES = [
+  { value: 'pending', label: 'No Screening Call' },
+  { value: 'screened_passed', label: 'Screened - Passed' },
+  { value: 'screened_failed', label: 'Screened - Failed' }
+];
+
 export const ROLE_SKILLS: SkillSet = {
   "Sales": [
-    "Lead generation", "Cold calling", "CRM usage", "Negotiation", 
+    "Lead generation", "Cold calling", "CRM usage", "Negotiation",
     "Closing", "Client relationship management", "Reporting", "Team leadership"
   ],
   "Accountant / Finance": [
