@@ -196,6 +196,14 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ application,
                                     <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Experience & Role</h3>
                                 </div>
                                 <div className="grid grid-cols-2 gap-y-8">
+                                    <div className="col-span-2">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1.5">Job Role</p>
+                                        <p className="text-sm font-bold text-primary">
+                                            {application.role === 'Other' && application.other_role_specify
+                                                ? application.other_role_specify
+                                                : application.role}
+                                        </p>
+                                    </div>
                                     <div>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1.5">Experience Level</p>
                                         <p className="text-sm font-bold text-slate-700">{application.experience_years}</p>
