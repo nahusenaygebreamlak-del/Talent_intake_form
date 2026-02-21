@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-import { FormData, Application } from './types';
+import { FormData, Application, UserRole } from './types';
 import {
   ROLES, EXPERIENCE_RANGES, EMPLOYMENT_STATUS, START_DATES,
   EDUCATION_LEVELS, SALARY_RANGES, WORK_TYPES, ROLE_SKILLS, INITIAL_DATA
@@ -24,6 +24,7 @@ function App() {
   const [currentView, setCurrentView] = useState<'form' | 'admin' | 'login' | 'public-profile'>('form');
   const [publicCandidate, setPublicCandidate] = useState<Application | null>(null);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [formData, setFormData] = useState<FormData>(INITIAL_DATA);
@@ -44,31 +45,43 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const candidateId = params.get('candidate');
 
-    const handleDeepLink = async (id: string) => {
-      // First try to check if user is logged in
-      const { data: { session } } = await supabase.auth.getSession();
+    // Helper to fetch role from profiles table
+    const fetchUserRole = async (userId: string) => {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .single();
+        return (profile?.role as UserRole) ?? 'recruiter';
+      } catch {
+        return 'recruiter';
+      }
+    };
 
+    // Handle deep links for public candidate profiles
+    const handleDeepLink = async (id: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
+        fetchUserRole(session.user.id).then(role => {
+          setUserRole(role);
+        });
         setCurrentView('admin');
       } else {
-        // Fetch candidate as public
         try {
-          const { data, error } = await supabase
+          const { data } = await supabase
             .from('job_applications')
             .select('*')
             .eq('id', id)
             .single();
-
           if (data) {
             setPublicCandidate(data);
             setCurrentView('public-profile');
           } else {
-            console.warn('Candidate not found or restricted');
             setCurrentView('form');
           }
-        } catch (err) {
-          console.error('Error fetching public candidate:', err);
+        } catch {
           setCurrentView('form');
         }
       }
@@ -77,25 +90,63 @@ function App() {
 
     if (candidateId) {
       handleDeepLink(candidateId);
-    } else {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setUser(session?.user ?? null);
-        setAuthLoading(false);
-      });
     }
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Use onAuthStateChange as the single source of truth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+
       setUser(session?.user ?? null);
+
+      if (session?.user) {
+        fetchUserRole(session.user.id).then(role => {
+          setUserRole(role);
+        });
+      } else {
+        setUserRole(null);
+      }
+
+      setAuthLoading(false);
     });
+
+    // Explicitly check for session on mount to handle cases where onAuthStateChange might delay
+    const initAuth = async () => {
+      if (candidateId) {
+        await handleDeepLink(candidateId);
+      } else {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            setUser(session.user);
+            fetchUserRole(session.user.id).then(role => {
+              setUserRole(role);
+            });
+          }
+        } catch (err) {
+          console.error('[AUTH] Initial session check failed:', err);
+        } finally {
+          setAuthLoading(false);
+        }
+      }
+    };
+
+    initAuth();
 
     return () => subscription.unsubscribe();
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setCurrentView('form');
+    console.log('[AUTH] Logout initiated');
     setShowProfileMenu(false);
+    setCurrentView('form');
+    setUser(null);
+    setUserRole(null);
+
+    try {
+      await supabase.auth.signOut();
+      console.log('[AUTH] Sign out complete');
+    } catch (err) {
+      console.error('[AUTH] Sign out error:', err);
+    }
   };
 
   const handleProfileClick = () => {
@@ -581,6 +632,10 @@ function App() {
 
   // Show login form if trying to access admin without auth
   if (currentView === 'login') {
+    if (user && !authLoading) {
+      setCurrentView('admin');
+      return null;
+    }
     return (
       <LoginForm
         onSuccess={() => setCurrentView('admin')}
@@ -591,11 +646,11 @@ function App() {
 
   // Render admin dashboard if in admin view and authenticated
   if (currentView === 'admin') {
-    if (!user) {
+    if (!user && !authLoading) {
       setCurrentView('login');
       return null;
     }
-    return <AdminDashboard onBackToForm={() => setCurrentView('form')} onLogout={handleLogout} />;
+    return <AdminDashboard onBackToForm={() => setCurrentView('form')} onLogout={handleLogout} userRole={userRole ?? 'guest'} />;
   }
 
   // Render public profile view

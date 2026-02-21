@@ -1,25 +1,27 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, Menu, ChevronLeft } from 'lucide-react';
 import { supabase } from '../supabase';
-import { Application, FilterState, ScreeningStatus } from '../types';
+import { Application, FilterState, ScreeningStatus, UserRole } from '../types';
 import { CandidateProfile } from './CandidateProfile';
 import { Sidebar } from './Admin/Sidebar';
 import { FilterSystem } from './Admin/FilterSystem';
 import { CandidateTable } from './Admin/CandidateTable';
 import { AnalyticsPanel } from './Admin/AnalyticsPanel';
+import { UserManagement } from './Admin/UserManagement';
 
 interface AdminDashboardProps {
     onBackToForm: () => void;
     onLogout: () => void;
+    userRole: UserRole;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, onLogout }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, onLogout, userRole }) => {
     const [applications, setApplications] = useState<Application[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedCandidate, setSelectedCandidate] = useState<Application | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'applications'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'applications' | 'users'>('dashboard');
 
     // Multi-select state
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -52,11 +54,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
         try {
             setLoading(true);
             setError(null);
+            console.log('[FETCH] Starting fetchApplications...');
 
             const { data, error: fetchError } = await supabase
                 .from('job_applications')
                 .select('*')
                 .order('created_at', { ascending: false });
+
+            console.log('[FETCH] Result:', data?.length ?? 'null', 'error:', fetchError);
 
             if (fetchError) throw fetchError;
 
@@ -70,9 +75,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                 if (candidate) setSelectedCandidate(candidate);
             }
         } catch (err: any) {
-            console.error('Error fetching applications:', err);
+            console.error('[FETCH] Error:', err);
             setError(err.message || 'Failed to load applications');
         } finally {
+            console.log('[FETCH] Done, setting loading = false');
             setLoading(false);
         }
     };
@@ -211,14 +217,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
         return filtered;
     }, [filters, applications, sortConfig]);
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
-    }
-
     return (
         <div className="min-h-screen bg-slate-100 flex">
             <Sidebar
@@ -228,6 +226,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                 applicationsCount={applications.length}
                 onBackToForm={onBackToForm}
                 onLogout={onLogout}
+                userRole={userRole}
             />
 
             <div className="flex-1 flex flex-col min-w-0 h-screen">
@@ -240,7 +239,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                             {isSidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                         </button>
                         <h2 className="text-lg font-bold text-slate-800">
-                            {activeTab === 'dashboard' ? 'Recruitment Dashboard' : 'Talent Pool Management'}
+                            {activeTab === 'dashboard' ? 'Recruitment Dashboard' : activeTab === 'users' ? 'User Management' : 'Talent Pool Management'}
                         </h2>
                     </div>
                     <button
@@ -253,8 +252,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                 </header>
 
                 <main className="flex-1 p-10 overflow-y-auto relative">
-                    {activeTab === 'dashboard' ? (
+                    {loading ? (
+                        <div className="flex items-center justify-center h-64">
+                            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    ) : error ? (
+                        <div className="flex flex-col items-center justify-center h-64 gap-4">
+                            <p className="text-sm font-bold text-red-500">{error}</p>
+                            <button onClick={fetchApplications} className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-bold">
+                                Retry
+                            </button>
+                        </div>
+                    ) : activeTab === 'dashboard' ? (
                         <AnalyticsPanel applications={applications} />
+                    ) : activeTab === 'users' ? (
+                        <UserManagement />
                     ) : (
                         <>
                             <FilterSystem filters={filters} setFilters={setFilters} />
@@ -272,30 +284,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                                             <div className="w-px h-10 bg-slate-100"></div>
 
                                             <div className="flex items-center gap-3">
-                                                <button
-                                                    onClick={exportToCSV}
-                                                    className="px-5 py-2.5 bg-primary/5 hover:bg-primary/10 text-primary rounded-xl text-[11px] font-black uppercase tracking-wider transition-all border border-primary/10"
-                                                >
-                                                    Export CSV
-                                                </button>
+                                                {userRole !== 'guest' && (
+                                                    <button
+                                                        onClick={exportToCSV}
+                                                        className="px-5 py-2.5 bg-primary/5 hover:bg-primary/10 text-primary rounded-xl text-[11px] font-black uppercase tracking-wider transition-all border border-primary/10"
+                                                    >
+                                                        Export CSV
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
 
                                         <div className="flex items-center gap-3">
-                                            <button
-                                                disabled={isBulkUpdating}
-                                                onClick={() => handleBulkStatusUpdate('screened_passed')}
-                                                className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-green-500/10 disabled:opacity-50"
-                                            >
-                                                Pass Selection
-                                            </button>
-                                            <button
-                                                disabled={isBulkUpdating}
-                                                onClick={() => handleBulkStatusUpdate('screened_failed')}
-                                                className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-red-500/10 disabled:opacity-50"
-                                            >
-                                                Fail Selection
-                                            </button>
+                                            {userRole !== 'guest' ? (
+                                                <>
+                                                    <button
+                                                        disabled={isBulkUpdating}
+                                                        onClick={() => handleBulkStatusUpdate('screened_passed')}
+                                                        className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-green-500/10 disabled:opacity-50"
+                                                    >
+                                                        Pass Selection
+                                                    </button>
+                                                    <button
+                                                        disabled={isBulkUpdating}
+                                                        onClick={() => handleBulkStatusUpdate('screened_failed')}
+                                                        className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-red-500/10 disabled:opacity-50"
+                                                    >
+                                                        Fail Selection
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <div className="px-4 py-2 bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-widest rounded-xl border border-slate-200">
+                                                    View Only Access
+                                                </div>
+                                            )}
                                             <button
                                                 disabled={isBulkUpdating}
                                                 onClick={() => setSelectedIds([])}
@@ -322,6 +344,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                                     if (selectedIds.length === filteredApplications.length) setSelectedIds([]);
                                     else setSelectedIds(filteredApplications.map(a => a.id));
                                 }}
+                                userRole={userRole}
                             />
                         </>
                     )}

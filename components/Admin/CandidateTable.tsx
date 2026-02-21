@@ -1,6 +1,6 @@
 import React from 'react';
-import { ChevronUp, ChevronDown, Check, X } from 'lucide-react';
-import { Application, ScreeningStatus } from '../../types';
+import { ChevronUp, ChevronDown, Check, X, Lock } from 'lucide-react';
+import { Application, ScreeningStatus, UserRole } from '../../types';
 import { StarRating } from '../StarRating';
 
 interface CandidateTableProps {
@@ -16,6 +16,7 @@ interface CandidateTableProps {
     selectedIds: string[];
     onToggleSelect: (id: string) => void;
     onToggleSelectAll: () => void;
+    userRole: UserRole;
 }
 
 export const CandidateTable: React.FC<CandidateTableProps> = ({
@@ -27,7 +28,8 @@ export const CandidateTable: React.FC<CandidateTableProps> = ({
     sortConfig,
     selectedIds,
     onToggleSelect,
-    onToggleSelectAll
+    onToggleSelectAll,
+    userRole
 }) => {
     const isAllSelected = applications.length > 0 && selectedIds.length === applications.length;
 
@@ -167,26 +169,34 @@ export const CandidateTable: React.FC<CandidateTableProps> = ({
                                 </td>
                                 <td className="px-8 py-5 text-center" onClick={(e) => e.stopPropagation()}>
                                     <div className="flex items-center justify-center gap-1.5">
-                                        <button
-                                            onClick={() => handleStatusUpdate(app.id, 'screened_passed')}
-                                            className={`p-1.5 rounded-lg transition-all ${app.screening_status === 'screened_passed'
-                                                ? 'bg-green-500 text-white shadow-md shadow-green-500/20'
-                                                : 'bg-slate-50 text-slate-400 hover:bg-green-50 hover:text-green-500 border border-slate-100'
-                                                }`}
-                                            title="Pass Screening"
-                                        >
-                                            <Check className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleStatusUpdate(app.id, 'screened_failed')}
-                                            className={`p-1.5 rounded-lg transition-all ${app.screening_status === 'screened_failed'
-                                                ? 'bg-red-500 text-white shadow-md shadow-red-500/20'
-                                                : 'bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 border border-slate-100'
-                                                }`}
-                                            title="Fail Screening"
-                                        >
-                                            <X className="w-3.5 h-3.5" />
-                                        </button>
+                                        {userRole !== 'guest' ? (
+                                            <>
+                                                <button
+                                                    onClick={() => handleStatusUpdate(app.id, 'screened_passed')}
+                                                    className={`p-1.5 rounded-lg transition-all ${app.screening_status === 'screened_passed'
+                                                        ? 'bg-green-500 text-white shadow-md shadow-green-500/20'
+                                                        : 'bg-slate-50 text-slate-400 hover:bg-green-50 hover:text-green-500 border border-slate-100'
+                                                        }`}
+                                                    title="Pass Screening"
+                                                >
+                                                    <Check className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleStatusUpdate(app.id, 'screened_failed')}
+                                                    className={`p-1.5 rounded-lg transition-all ${app.screening_status === 'screened_failed'
+                                                        ? 'bg-red-500 text-white shadow-md shadow-red-500/20'
+                                                        : 'bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 border border-slate-100'
+                                                        }`}
+                                                    title="Fail Screening"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <span title="View Only" className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 text-slate-300">
+                                                <Lock className="w-3.5 h-3.5" />
+                                            </span>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="px-8 py-5 text-center">
@@ -214,7 +224,7 @@ export const CandidateTable: React.FC<CandidateTableProps> = ({
                                     <div className="flex justify-end">
                                         <StarRating
                                             rating={app.rating}
-                                            onRate={(r) => handleRate(app.id, r)}
+                                            onRate={userRole !== 'guest' ? (r) => handleRate(app.id, r) : undefined}
                                         />
                                     </div>
                                 </td>

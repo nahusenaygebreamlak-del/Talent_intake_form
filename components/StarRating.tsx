@@ -3,11 +3,12 @@ import { Star } from 'lucide-react';
 
 interface StarRatingProps {
     rating: number | null;
-    onRate: (rating: number) => void;
+    onRate?: (rating: number) => void;
     interactive?: boolean;
 }
 
-export const StarRating: React.FC<StarRatingProps> = ({ rating, onRate, interactive = true }) => {
+export const StarRating: React.FC<StarRatingProps> = ({ rating, onRate, interactive }) => {
+    const isInteractive = interactive ?? !!onRate;
     const [hover, setHover] = useState<number | null>(null);
 
     return (
@@ -16,12 +17,12 @@ export const StarRating: React.FC<StarRatingProps> = ({ rating, onRate, interact
                 <button
                     key={star}
                     type="button"
-                    disabled={!interactive}
-                    className={`${interactive ? 'cursor-pointer' : 'cursor-default'
+                    disabled={!isInteractive}
+                    className={`${isInteractive ? 'cursor-pointer' : 'cursor-default'
                         } transition-all duration-200 focus:outline-none`}
-                    onClick={() => interactive && onRate(star)}
-                    onMouseEnter={() => interactive && setHover(star)}
-                    onMouseLeave={() => interactive && setHover(null)}
+                    onClick={() => isInteractive && onRate && onRate(star)}
+                    onMouseEnter={() => isInteractive && setHover(star)}
+                    onMouseLeave={() => isInteractive && setHover(null)}
                 >
                     <Star
                         className={`w-4 h-4 ${star <= (hover || rating || 0)

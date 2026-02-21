@@ -8,6 +8,13 @@ export const ROLES: RoleType[] = [
   "Operations",
   "Customer Service",
   "Supervisor / Manager",
+  "IT / Digital Technology",
+  "HR / Recruitment",
+  "Creative / Design",
+  "Logistics / Supply Chain",
+  "Healthcare",
+  "Hospitality",
+  "Driving / Transport",
   "Other"
 ];
 
@@ -77,6 +84,34 @@ export const ROLE_SKILLS: SkillSet = {
   "Supervisor / Manager": [
     "Team Building", "Strategic Planning", "Performance Reviews", "Delegation",
     "Crisis Management", "Mentoring", "Budget Oversight", "KPI Tracking"
+  ],
+  "IT / Digital Technology": [
+    "Software Development", "Network Administration", "Cybersecurity", "Cloud Computing (AWS/Azure)",
+    "Database Management", "Technical Support", "Web Technologies", "IT Project Management"
+  ],
+  "HR / Recruitment": [
+    "Talent Acquisition", "Employee Relations", "Performance Management", "Labor Law Compliance",
+    "Onboarding", "Training & Development", "HRIS Management", "Policy Writing"
+  ],
+  "Creative / Design": [
+    "Graphic Design", "UI/UX Design", "Video Editing", "Illustration",
+    "Brand Identity", "Adobe Creative Suite", "Motion Graphics", "Photography"
+  ],
+  "Logistics / Supply Chain": [
+    "Inventory Control", "Fleet Management", "Warehouse Management", "Procurement",
+    "Freight Forwarding", "Distribution Planning", "Route Optimization", "Supply Chain Analytics"
+  ],
+  "Healthcare": [
+    "Patient Care", "Medical Terminology", "First Aid/CPR", "Electronic Health Records",
+    "Clinical Support", "Health & Safety Compliance", "Medical Research", "Public Health"
+  ],
+  "Hospitality": [
+    "Guest Services", "Front Desk Operations", "Food & Beverage Management", "Event Coordination",
+    "Housekeeping Management", "Reservation Systems", "Customer Loyalty", "Tourism Knowledge"
+  ],
+  "Driving / Transport": [
+    "Defensive Driving", "Route Navigation", "Vehicle Maintenance", "Logistics Documentation",
+    "Passenger Safety", "Heavy Vehicle Operation", "Time Management", "local Geography"
   ],
   "Other": [
     "Communication", "Problem Solving", "Time Management", "Adaptability",

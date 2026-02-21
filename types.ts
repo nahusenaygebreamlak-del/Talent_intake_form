@@ -45,6 +45,13 @@ export type RoleType =
   | "Operations"
   | "Customer Service"
   | "Supervisor / Manager"
+  | "IT / Digital Technology"
+  | "HR / Recruitment"
+  | "Creative / Design"
+  | "Logistics / Supply Chain"
+  | "Healthcare"
+  | "Hospitality"
+  | "Driving / Transport"
   | "Other";
 
 export interface SkillSet {
@@ -52,6 +59,7 @@ export interface SkillSet {
 }
 
 // Admin Dashboard Types
+export type UserRole = 'super_admin' | 'recruiter' | 'guest';
 export type ScreeningStatus = 'pending' | 'screened_passed' | 'screened_failed';
 
 export interface Application {
