@@ -17,6 +17,13 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ application,
     const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
     const [isLoadingUrl, setIsLoadingUrl] = React.useState(false);
 
+    // Helper to ensure URLs have a protocol for <a> tags
+    const formatUrl = (url: string | null) => {
+        if (!url) return '';
+        if (url.startsWith('http://') || url.startsWith('https://')) return url;
+        return `https://${url}`;
+    };
+
     React.useEffect(() => {
         const generateUrl = async () => {
             if (!application.cv_file_path) {
@@ -166,7 +173,18 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ application,
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1.5">LinkedIn Profile</p>
-                                        <p className="text-sm font-bold text-primary truncate">{application.linkedin_url || '-'}</p>
+                                        {application.linkedin_url ? (
+                                            <a
+                                                href={formatUrl(application.linkedin_url)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sm font-bold text-primary hover:text-primary-dark hover:underline truncate block"
+                                            >
+                                                {application.linkedin_url}
+                                            </a>
+                                        ) : (
+                                            <p className="text-sm font-bold text-slate-400">-</p>
+                                        )}
                                     </div>
                                 </div>
                             </section>
@@ -233,7 +251,18 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ application,
 
                             <section className="col-span-2">
                                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Portfolio Link</h3>
-                                <p className="text-sm font-bold text-primary break-all">{application.portfolio_url || 'No portfolio provided'}</p>
+                                {application.portfolio_url ? (
+                                    <a
+                                        href={formatUrl(application.portfolio_url)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm font-bold text-primary hover:text-primary-dark hover:underline break-all block"
+                                    >
+                                        {application.portfolio_url}
+                                    </a>
+                                ) : (
+                                    <p className="text-sm font-bold text-slate-400">No portfolio provided</p>
+                                )}
                             </section>
                         </div>
 
