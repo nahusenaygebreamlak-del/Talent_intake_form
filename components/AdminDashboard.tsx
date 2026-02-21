@@ -1,15 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import {
-    Search, Filter, X, Eye,
-    Briefcase, GraduationCap,
-    LayoutDashboard, Users as UsersIcon, Star, RefreshCw,
-    LogOut, ClipboardList, Check
-} from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { RefreshCw, Menu, ChevronLeft } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Application, FilterState, ScreeningStatus } from '../types';
-import { ROLES, EXPERIENCE_RANGES, EDUCATION_LEVELS, EMPLOYMENT_STATUS, WORK_TYPES, SCREENING_STATUSES } from '../constants';
-import { StarRating } from './StarRating';
 import { CandidateProfile } from './CandidateProfile';
+import { Sidebar } from './Admin/Sidebar';
+import { FilterSystem } from './Admin/FilterSystem';
+import { CandidateTable } from './Admin/CandidateTable';
+import { AnalyticsPanel } from './Admin/AnalyticsPanel';
 
 interface AdminDashboardProps {
     onBackToForm: () => void;
@@ -18,10 +15,23 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, onLogout }) => {
     const [applications, setApplications] = useState<Application[]>([]);
-    const [filteredApplications, setFilteredApplications] = useState<Application[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedCandidate, setSelectedCandidate] = useState<Application | null>(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'applications'>('dashboard');
+
+    // Multi-select state
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
+    const [sortConfig, setSortConfig] = useState<{
+        key: keyof Application | null;
+        direction: 'asc' | 'desc' | null;
+    }>({
+        key: 'created_at',
+        direction: 'desc'
+    });
 
     const [filters, setFilters] = useState<FilterState>({
         searchQuery: '',
@@ -51,16 +61,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
             if (fetchError) throw fetchError;
 
             setApplications(data || []);
-            setFilteredApplications(data || []);
 
-            // Handle deep linking to a candidate if ID is in URL
+            // Handle deep linking
             const params = new URLSearchParams(window.location.search);
             const candidateId = params.get('candidate');
             if (candidateId && data) {
                 const candidate = data.find(app => app.id === candidateId);
-                if (candidate) {
-                    setSelectedCandidate(candidate);
-                }
+                if (candidate) setSelectedCandidate(candidate);
             }
         } catch (err: any) {
             console.error('Error fetching applications:', err);
@@ -79,15 +86,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
 
             if (updateError) throw updateError;
 
-            const updatedApps = applications.map(app =>
-                app.id === id ? { ...app, rating } : app
-            );
-            setApplications(updatedApps);
-
-            if (selectedCandidate?.id === id) {
-                setSelectedCandidate({ ...selectedCandidate, rating });
-            }
-        } catch (err: any) {
+            setApplications(prev => prev.map(app => app.id === id ? { ...app, rating } : app));
+            if (selectedCandidate?.id === id) setSelectedCandidate({ ...selectedCandidate, rating });
+        } catch (err) {
             console.error('Error updating rating:', err);
         }
     };
@@ -101,21 +102,78 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
 
             if (updateError) throw updateError;
 
-            const updatedApps = applications.map(app =>
-                app.id === id ? { ...app, screening_status: status } : app
-            );
-            setApplications(updatedApps);
-
-            if (selectedCandidate?.id === id) {
-                setSelectedCandidate({ ...selectedCandidate, screening_status: status });
-            }
-        } catch (err: any) {
+            setApplications(prev => prev.map(app => app.id === id ? { ...app, screening_status: status } : app));
+            if (selectedCandidate?.id === id) setSelectedCandidate({ ...selectedCandidate, screening_status: status });
+        } catch (err) {
             console.error('Error updating status:', err);
-            alert('Failed to update status. Please make sure the database has the screening_status column.');
         }
     };
 
-    useEffect(() => {
+    const handleBulkStatusUpdate = async (status: ScreeningStatus) => {
+        if (selectedIds.length === 0) return;
+
+        try {
+            setIsBulkUpdating(true);
+            const { error: updateError } = await supabase
+                .from('job_applications')
+                .update({ screening_status: status })
+                .in('id', selectedIds);
+
+            if (updateError) throw updateError;
+
+            setApplications(prev => prev.map(app =>
+                selectedIds.includes(app.id) ? { ...app, screening_status: status } : app
+            ));
+            setSelectedIds([]);
+        } catch (err) {
+            console.error('Error in bulk update:', err);
+        } finally {
+            setIsBulkUpdating(false);
+        }
+    };
+
+    const exportToCSV = () => {
+        const selectedApps = applications.filter(app => selectedIds.includes(app.id));
+        if (selectedApps.length === 0) return;
+
+        const headers = ['Full Name', 'Email', 'Phone', 'Role', 'Experience', 'Education', 'Status', 'Rating', 'Applied Date'];
+        const rows = selectedApps.map(app => [
+            `"${app.full_name}"`,
+            `"${app.email}"`,
+            `"${app.phone_number || ''}"`,
+            `"${app.role}"`,
+            `"${app.experience_years}"`,
+            `"${app.education_level}"`,
+            `"${app.screening_status || 'pending'}"`,
+            `"${app.rating || 0}"`,
+            `"${new Date(app.created_at).toLocaleDateString()}"`
+        ]);
+
+        const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', `candidates_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleSort = (key: keyof Application) => {
+        let direction: 'asc' | 'desc' | null = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+        else if (sortConfig.key === key && sortConfig.direction === 'desc') direction = null;
+        setSortConfig({ key, direction });
+    };
+
+    const toggleSelectCandidate = (id: string) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
+
+    const filteredApplications = useMemo(() => {
         let filtered = [...applications];
 
         if (filters.searchQuery) {
@@ -135,8 +193,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
         if (filters.minRating > 0) filtered = filtered.filter(app => (app.rating || 0) >= filters.minRating);
         if (filters.screeningStatus) filtered = filtered.filter(app => app.screening_status === filters.screeningStatus);
 
-        setFilteredApplications(filtered);
-    }, [filters, applications]);
+        if (sortConfig.key && sortConfig.direction) {
+            filtered.sort((a, b) => {
+                const aValue = a[sortConfig.key!];
+                const bValue = b[sortConfig.key!];
+                if (aValue === bValue) return 0;
+                let comparison = 0;
+                if (aValue === null || aValue === undefined) comparison = 1;
+                else if (bValue === null || bValue === undefined) comparison = -1;
+                else if (typeof aValue === 'string' && typeof bValue === 'string') comparison = aValue.localeCompare(bValue);
+                else if (typeof aValue === 'number' && typeof bValue === 'number') comparison = aValue - bValue;
+                else comparison = String(aValue).localeCompare(String(bValue));
+                return sortConfig.direction === 'asc' ? comparison : -comparison;
+            });
+        }
+
+        return filtered;
+    }, [filters, applications, sortConfig]);
 
     if (loading) {
         return (
@@ -148,51 +221,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
 
     return (
         <div className="min-h-screen bg-slate-100 flex">
-            {/* Sidebar - Fixed Height and Sticky */}
-            <aside className="w-72 h-screen sticky top-0 bg-[#FBFBFC] border-r border-slate-200 flex flex-col shrink-0">
-                <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-                    <h1 className="text-xl font-bold text-slate-800 mb-12">Afriwork Admin</h1>
+            <Sidebar
+                isSidebarOpen={isSidebarOpen}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                applicationsCount={applications.length}
+                onBackToForm={onBackToForm}
+                onLogout={onLogout}
+            />
 
-                    <div className="space-y-10">
-                        <div>
-                            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Overview</h3>
-                            <button className="w-full flex items-center justify-between px-4 py-3 bg-white border border-slate-100/50 shadow-sm text-primary rounded-xl font-bold transition-all group">
-                                <div className="flex items-center gap-3">
-                                    <ClipboardList className="w-4 h-4" />
-                                    <span className="text-sm">Applications</span>
-                                </div>
-                                <span className="text-[10px] bg-accent/10 text-accent px-2 py-1 rounded-full">{applications.length}</span>
-                            </button>
-
-                            <button
-                                onClick={onBackToForm}
-                                className="w-full flex items-center gap-3 px-4 py-3 mt-4 text-slate-400 hover:text-primary hover:bg-white border border-transparent hover:border-slate-100/50 hover:shadow-sm rounded-xl font-bold transition-all group"
-                            >
-                                <UsersIcon className="w-4 h-4" />
-                                <span className="text-sm">Back to Intake Form</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="p-10 border-t border-slate-100 bg-[#FBFBFC]">
-                    <button
-                        onClick={onLogout}
-                        className="flex items-center gap-3 text-slate-400 hover:text-red-500 font-bold text-sm transition-colors group"
-                    >
-                        <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                        Sign Out
-                    </button>
-                </div>
-            </aside>
-
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0">
-                {/* Header - Simple */}
+            <div className="flex-1 flex flex-col min-w-0 h-screen">
                 <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-10 shrink-0">
-                    <div className="flex items-center gap-3">
-                        <UsersIcon className="w-5 h-5 text-accent" />
-                        <h2 className="text-lg font-bold text-slate-800">Talent Pool Management</h2>
+                    <div className="flex items-center gap-6">
+                        <button
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
+                        >
+                            {isSidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                        </button>
+                        <h2 className="text-lg font-bold text-slate-800">
+                            {activeTab === 'dashboard' ? 'Recruitment Dashboard' : 'Talent Pool Management'}
+                        </h2>
                     </div>
                     <button
                         onClick={fetchApplications}
@@ -203,242 +252,100 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                     </button>
                 </header>
 
-                <main className="flex-1 p-10 overflow-y-auto">
-                    {/* Previous Better Filters - Grid Layout */}
-                    <div className="bg-white rounded-3xl p-8 mb-10 shadow-sm border border-slate-200">
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="flex items-center gap-2">
-                                <Filter className="w-4 h-4 text-accent" />
-                                <h3 className="text-sm font-bold text-slate-800">Advanced Filters</h3>
-                            </div>
-                            {Object.values(filters).some(v => v !== '' && v !== 0) && (
-                                <button
-                                    onClick={() => setFilters({ searchQuery: '', role: '', experienceYears: '', educationLevel: '', employmentStatus: '', workType: '', minRating: 0, screeningStatus: '' })}
-                                    className="text-xs font-bold text-red-500 hover:text-red-600 underline underline-offset-4"
-                                >
-                                    Reset All Filters
-                                </button>
+                <main className="flex-1 p-10 overflow-y-auto relative">
+                    {activeTab === 'dashboard' ? (
+                        <AnalyticsPanel applications={applications} />
+                    ) : (
+                        <>
+                            <FilterSystem filters={filters} setFilters={setFilters} />
+
+                            {/* Bulk Actions Bar */}
+                            {selectedIds.length > 0 && (
+                                <div className="mb-6 animate-in slide-in-from-top-4 duration-300">
+                                    <div className="bg-white px-8 py-5 rounded-[2rem] flex items-center justify-between border border-slate-200 shadow-sm">
+                                        <div className="flex items-center gap-8">
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1.5">Selections</span>
+                                                <span className="text-xl font-black text-slate-900 leading-none">{selectedIds.length} <span className="text-sm font-bold text-slate-400">Selected</span></span>
+                                            </div>
+
+                                            <div className="w-px h-10 bg-slate-100"></div>
+
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={exportToCSV}
+                                                    className="px-5 py-2.5 bg-primary/5 hover:bg-primary/10 text-primary rounded-xl text-[11px] font-black uppercase tracking-wider transition-all border border-primary/10"
+                                                >
+                                                    Export CSV
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                disabled={isBulkUpdating}
+                                                onClick={() => handleBulkStatusUpdate('screened_passed')}
+                                                className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-green-500/10 disabled:opacity-50"
+                                            >
+                                                Pass Selection
+                                            </button>
+                                            <button
+                                                disabled={isBulkUpdating}
+                                                onClick={() => handleBulkStatusUpdate('screened_failed')}
+                                                className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-red-500/10 disabled:opacity-50"
+                                            >
+                                                Fail Selection
+                                            </button>
+                                            <button
+                                                disabled={isBulkUpdating}
+                                                onClick={() => setSelectedIds([])}
+                                                className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-xl transition-all border border-slate-200"
+                                                title="Clear Selection"
+                                            >
+                                                <RefreshCw className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {/* Search */}
-                            <div className="relative col-span-1 lg:col-span-2">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search name, email, or phone..."
-                                    value={filters.searchQuery}
-                                    onChange={e => setFilters({ ...filters, searchQuery: e.target.value })}
-                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-primary/10 focus:border-primary/50 outline-none transition-all"
-                                />
-                            </div>
-
-                            {/* Role */}
-                            <select
-                                value={filters.role}
-                                onChange={e => setFilters({ ...filters, role: e.target.value })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 outline-none hover:border-slate-300 transition-all cursor-pointer"
-                            >
-                                <option value="">All Roles</option>
-                                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                            </select>
-
-                            {/* Min Rating */}
-                            <select
-                                value={filters.minRating}
-                                onChange={e => setFilters({ ...filters, minRating: Number(e.target.value) })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 outline-none hover:border-slate-300 transition-all cursor-pointer"
-                            >
-                                <option value="0">Any Rating</option>
-                                <option value="5">5 Stars only</option>
-                                <option value="4">4+ Stars</option>
-                                <option value="3">3+ Stars</option>
-                                <option value="2">2+ Stars</option>
-                                <option value="1">1+ Stars</option>
-                            </select>
-
-                            {/* Experience */}
-                            <select
-                                value={filters.experienceYears}
-                                onChange={e => setFilters({ ...filters, experienceYears: e.target.value })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 outline-none hover:border-slate-300 transition-all cursor-pointer"
-                            >
-                                <option value="">All Experience</option>
-                                {EXPERIENCE_RANGES.map(r => <option key={r} value={r}>{r}</option>)}
-                            </select>
-
-                            {/* Education */}
-                            <select
-                                value={filters.educationLevel}
-                                onChange={e => setFilters({ ...filters, educationLevel: e.target.value })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 outline-none hover:border-slate-300 transition-all cursor-pointer"
-                            >
-                                <option value="">All Education</option>
-                                {EDUCATION_LEVELS.map(r => <option key={r} value={r}>{r}</option>)}
-                            </select>
-
-                            {/* Employment Status */}
-                            <select
-                                value={filters.employmentStatus}
-                                onChange={e => setFilters({ ...filters, employmentStatus: e.target.value })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 outline-none hover:border-slate-300 transition-all cursor-pointer"
-                            >
-                                <option value="">Any Employment</option>
-                                {EMPLOYMENT_STATUS.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-
-                            {/* Work Type */}
-                            <select
-                                value={filters.workType}
-                                onChange={e => setFilters({ ...filters, workType: e.target.value })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 outline-none hover:border-slate-300 transition-all cursor-pointer"
-                            >
-                                <option value="">Any Work Type</option>
-                                {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-
-                            {/* Screening Status */}
-                            <select
-                                value={filters.screeningStatus}
-                                onChange={e => setFilters({ ...filters, screeningStatus: e.target.value })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 outline-none hover:border-slate-300 transition-all cursor-pointer"
-                            >
-                                <option value="">All Screening Status</option>
-                                {SCREENING_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Applications Table */}
-                    <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-200">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-[#FBFBFC] border-b border-slate-100">
-                                    <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Candidate</th>
-                                    <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Screening</th>
-                                    <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Role</th>
-                                    <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Experience</th>
-                                    <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Applied Date</th>
-                                    <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Grade</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredApplications.length > 0 ? (
-                                    filteredApplications.map((app) => (
-                                        <tr
-                                            key={app.id}
-                                            onClick={() => setSelectedCandidate(app)}
-                                            className="group hover:bg-slate-50/80 cursor-pointer border-b last:border-none border-slate-50 transition-colors"
-                                        >
-                                            <td className="px-8 py-5">
-                                                <div>
-                                                    <p className="font-bold text-slate-800 text-sm mb-0.5">{app.full_name}</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="text-[11px] font-medium text-slate-400">{app.email}</p>
-                                                        {app.screening_status && app.screening_status !== 'pending' && (
-                                                            <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase ${app.screening_status === 'screened_passed'
-                                                                ? 'bg-green-100 text-green-600'
-                                                                : 'bg-red-100 text-red-600'
-                                                                }`}>
-                                                                {app.screening_status === 'screened_passed' ? 'Passed' : 'Failed'}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-5 text-center" onClick={(e) => e.stopPropagation()}>
-                                                <div className="flex items-center justify-center gap-1.5">
-                                                    <button
-                                                        onClick={() => handleStatusUpdate(app.id, 'screened_passed')}
-                                                        className={`p-1.5 rounded-lg transition-all ${app.screening_status === 'screened_passed'
-                                                            ? 'bg-green-500 text-white shadow-md shadow-green-500/20'
-                                                            : 'bg-slate-50 text-slate-400 hover:bg-green-50 hover:text-green-500 border border-slate-100'
-                                                            }`}
-                                                        title="Pass Screening"
-                                                    >
-                                                        <Check className="w-3.5 h-3.5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleStatusUpdate(app.id, 'screened_failed')}
-                                                        className={`p-1.5 rounded-lg transition-all ${app.screening_status === 'screened_failed'
-                                                            ? 'bg-red-500 text-white shadow-md shadow-red-500/20'
-                                                            : 'bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 border border-slate-100'
-                                                            }`}
-                                                        title="Fail Screening"
-                                                    >
-                                                        <X className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-5 text-center">
-                                                {app.role ? (
-                                                    <span className="inline-block px-2.5 py-1 bg-primary/10 text-primary rounded-lg text-[10px] font-bold uppercase tracking-wider">
-                                                        {app.role}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-slate-200">—</span>
-                                                )}
-                                            </td>
-                                            <td className="px-8 py-5 text-center">
-                                                <span className="text-xs font-bold text-slate-600">{app.experience_years}</span>
-                                            </td>
-                                            <td className="px-8 py-5 text-center">
-                                                <span className="text-xs font-bold text-slate-400">
-                                                    {new Date(app.created_at).toLocaleDateString('en-US', {
-                                                        month: 'numeric',
-                                                        day: 'numeric',
-                                                        year: 'numeric'
-                                                    })}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-5" onClick={(e) => e.stopPropagation()}>
-                                                <div className="flex justify-end">
-                                                    <StarRating
-                                                        rating={app.rating}
-                                                        onRate={(r) => handleRate(app.id, r)}
-                                                    />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={6} className="px-8 py-20 text-center">
-                                            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No matching candidates</p>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                            <CandidateTable
+                                applications={filteredApplications}
+                                onSelectCandidate={setSelectedCandidate}
+                                handleRate={handleRate}
+                                handleStatusUpdate={handleStatusUpdate}
+                                handleSort={handleSort}
+                                sortConfig={sortConfig}
+                                selectedIds={selectedIds}
+                                onToggleSelect={toggleSelectCandidate}
+                                onToggleSelectAll={() => {
+                                    if (selectedIds.length === filteredApplications.length) setSelectedIds([]);
+                                    else setSelectedIds(filteredApplications.map(a => a.id));
+                                }}
+                            />
+                        </>
+                    )}
                 </main>
             </div>
 
-            {/* Candidate Profile Modal */}
-            {
-                selectedCandidate && (
-                    <CandidateProfile
-                        application={selectedCandidate}
-                        onClose={() => {
-                            setSelectedCandidate(null);
-                            // Clear URL param when closing
-                            const url = new URL(window.location.href);
-                            url.searchParams.delete('candidate');
-                            window.history.replaceState({}, '', url);
-                        }}
-                        onRate={(r) => handleRate(selectedCandidate.id, r)}
-                    />
-                )
-            }
+            {selectedCandidate && (
+                <CandidateProfile
+                    application={selectedCandidate}
+                    onClose={() => {
+                        setSelectedCandidate(null);
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('candidate');
+                        window.history.replaceState({}, '', url);
+                    }}
+                    onRate={(r) => handleRate(selectedCandidate.id, r)}
+                />
+            )}
 
             <style>{`
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
             `}</style>
-        </div >
+        </div>
     );
 };

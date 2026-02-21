@@ -123,24 +123,27 @@ function App() {
 
     switch (stepIndex) {
       case 0: // Basic Info
-        if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
-        if (!formData.phoneNumber.trim()) newErrors.phoneNumber = 'Phone number is required';
-        if (!formData.email.trim()) newErrors.email = 'Email is required';
-        else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Invalid email format';
+        if (!formData.fullName.trim()) newErrors.fullName = 'Full Name is required';
+        if (!formData.phoneNumber.trim()) newErrors.phoneNumber = 'Phone Number is required';
+        if (!formData.email.trim()) {
+          newErrors.email = 'Email Address is required';
+        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+          newErrors.email = 'Invalid email format';
+        }
         break;
 
       case 1: // Role & Experience
-        if (!formData.role) newErrors.role = 'Please select a role';
+        if (!formData.role) newErrors.role = 'Please select your role';
         if (formData.role === 'Other' && !formData.otherRoleSpecify.trim()) {
           newErrors.otherRoleSpecify = 'Please specify your role';
         }
-        if (!formData.experienceYears) newErrors.experienceYears = 'Please select experience range';
-        if (!formData.employmentStatus) newErrors.employmentStatus = 'Please select employment status';
-        if (!formData.startDate) newErrors.startDate = 'Please select start date';
+        if (!formData.experienceYears) newErrors.experienceYears = 'Please select your experience level';
+        if (!formData.employmentStatus) newErrors.employmentStatus = 'Please select your current status';
+        if (!formData.startDate) newErrors.startDate = 'Please select your availability';
         break;
 
       case 2: // Skills & Qualification
-        if (!formData.educationLevel) newErrors.educationLevel = 'Please select education level';
+        if (!formData.educationLevel) newErrors.educationLevel = 'Please select your education level';
         if (formData.topSkills.length === 0) newErrors.topSkills = 'Select at least one skill';
         if (formData.hasMeasurableAchievements && !formData.measurableAchievement.trim()) {
           newErrors.measurableAchievement = 'Please describe your achievement';
@@ -148,8 +151,8 @@ function App() {
         break;
 
       case 3: // Compensation
-        if (!formData.salaryRange) newErrors.salaryRange = 'Please select salary range';
-        if (!formData.workType) newErrors.workType = 'Please select work type';
+        if (!formData.salaryRange) newErrors.salaryRange = 'Please select your salary range';
+        if (!formData.workType) newErrors.workType = 'Please select your work preference';
         break;
 
       case 4: // Professional Presence
@@ -305,7 +308,7 @@ function App() {
           error={errors.phoneNumber}
         />
         <InputField
-          label="Email"
+          label="Email Address"
           type="email"
           placeholder="you@example.com"
           icon={Mail}
@@ -333,7 +336,7 @@ function App() {
       />
       <div className="space-y-4">
         <SelectField
-          label="Which role are you primarily applying for?"
+          label="Category/Role"
           options={ROLES}
           value={formData.role}
           onChange={e => {
@@ -351,7 +354,7 @@ function App() {
           />
         )}
         <RadioGroup
-          label="Years of professional experience"
+          label="Years of Experience"
           name="experience"
           options={EXPERIENCE_RANGES}
           value={formData.experienceYears}
@@ -359,7 +362,7 @@ function App() {
           error={errors.experienceYears}
         />
         <RadioGroup
-          label="Are you currently employed?"
+          label="Current Employment Status"
           name="employed"
           options={EMPLOYMENT_STATUS}
           value={formData.employmentStatus}
@@ -367,7 +370,7 @@ function App() {
           error={errors.employmentStatus}
         />
         <SelectField
-          label="When can you start a new role?"
+          label="Earliest Possible Start Date"
           options={START_DATES}
           value={formData.startDate}
           onChange={e => updateData({ startDate: e.target.value })}
@@ -384,7 +387,7 @@ function App() {
       />
       <div className="space-y-6">
         <SelectField
-          label="Highest level of education"
+          label="Highest Education Level"
           options={EDUCATION_LEVELS}
           value={formData.educationLevel}
           onChange={e => updateData({ educationLevel: e.target.value })}
@@ -393,7 +396,7 @@ function App() {
 
         {formData.role && (
           <MultiSelectChips
-            label={`Select your top 5 skills for ${formData.role}`}
+            label="Top Professional Skills (Select up to 5)"
             options={ROLE_SKILLS[formData.role] || ROLE_SKILLS['Other']}
             selectedValues={formData.topSkills}
             onChange={toggleSkill}
@@ -403,7 +406,7 @@ function App() {
         )}
 
         <div>
-          <label className="text-sm font-medium text-slate-700 mb-2 block ml-1">Do you have measurable achievements?</label>
+          <label className="text-sm font-medium text-slate-700 mb-2 block ml-1">Do you have a measurable achievement?</label>
           <div className="flex gap-4 mb-3">
             <button
               onClick={() => updateData({ hasMeasurableAchievements: true })}
@@ -440,7 +443,7 @@ function App() {
       />
       <div className="space-y-6">
         <RadioGroup
-          label="Expected monthly salary range (ETB)"
+          label="Desired Net Monthly Salary (ETB)"
           name="salary"
           options={SALARY_RANGES}
           value={formData.salaryRange}
@@ -448,7 +451,7 @@ function App() {
           error={errors.salaryRange}
         />
         <RadioGroup
-          label="Preferred work type"
+          label="Work Preference"
           name="workType"
           options={WORK_TYPES}
           value={formData.workType}
@@ -466,7 +469,7 @@ function App() {
       />
       <div className="space-y-4">
         <FileUpload
-          label="Upload updated CV"
+          label="Upload Professional CV (PDF Preferred)"
           fileName={formData.cvFile?.name}
           error={errors.cvFile}
           progress={uploadProgress}
@@ -511,7 +514,7 @@ function App() {
           }}
         />
         <InputField
-          label="LinkedIn Profile"
+          label="LinkedIn Profile URL"
           icon={Linkedin}
           placeholder="https://linkedin.com/in/..."
           value={formData.linkedInUrl}
@@ -519,7 +522,7 @@ function App() {
           error={errors.linkedInUrl}
         />
         <InputField
-          label="Portfolio URL"
+          label="Portfolio/Work Samples URL"
           icon={Globe}
           placeholder="https://myportfolio.com"
           value={formData.portfolioUrl}
@@ -554,14 +557,14 @@ function App() {
               <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors mr-3 ${formData.commitmentAgreed ? 'bg-primary border-primary' : 'bg-white border-slate-300 group-hover:border-slate-400'}`}>
                 {formData.commitmentAgreed && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
               </div>
-              <span className={`text-sm font-medium ${errors.commitmentAgreed ? 'text-red-600' : 'text-slate-800'}`}>Yes to all</span>
+              <span className={`text-sm font-medium ${errors.commitmentAgreed ? 'text-red-600' : 'text-slate-800'}`}>I agree to be professional & responsive</span>
             </label>
           </div>
           {errors.commitmentAgreed && <span className="text-red-500 text-xs mt-1 ml-1">{errors.commitmentAgreed}</span>}
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-700 mb-1.5 block ml-1">Why should we prioritize you for placement? (Optional)</label>
+          <label className="text-sm font-medium text-slate-700 mb-1.5 block ml-1">Why should we prioritize your application? (Optional)</label>
           <textarea
             className={`w-full rounded-lg border ${errors.priorityReason ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:border-primary focus:ring-primary/30'} bg-white focus:ring-4 outline-none transition-all py-3 px-4 text-slate-800 min-h-[120px] resize-none`}
             placeholder="Tell us what makes you unique..."

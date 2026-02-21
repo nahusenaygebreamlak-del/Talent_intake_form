@@ -179,7 +179,7 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ application,
                                 </div>
                                 <div className="grid grid-cols-2 gap-y-8">
                                     <div>
-                                        <p className="text-[10px) font-bold text-slate-400 uppercase tracking-tight mb-1.5">Experience Level</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1.5">Experience Level</p>
                                         <p className="text-sm font-bold text-slate-700">{application.experience_years}</p>
                                     </div>
                                     <div>

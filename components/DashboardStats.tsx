@@ -47,20 +47,6 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ applications }) 
             color: 'bg-orange-500',
             textColor: 'text-orange-600',
         },
-        {
-            label: 'Average Rating',
-            value: averageRating,
-            icon: Star,
-            color: 'bg-yellow-500',
-            textColor: 'text-yellow-600',
-        },
-        {
-            label: 'Top Role',
-            value: topRole,
-            icon: BarChart3,
-            color: 'bg-purple-500',
-            textColor: 'text-purple-600',
-        },
     ];
 
     return (
