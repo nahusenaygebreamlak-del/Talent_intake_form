@@ -90,11 +90,11 @@ export interface Application {
 
 export interface FilterState {
   searchQuery: string;
-  role: string;
-  experienceYears: string;
-  educationLevel: string;
-  employmentStatus: string;
-  workType: string;
-  minRating: number;
-  screeningStatus: string;
+  roles: string[];
+  experienceYears: string[];
+  educationLevel: string[];
+  employmentStatus: string[];
+  workType: string[];
+  minRating: number[];
+  screeningStatus: string[];
 }

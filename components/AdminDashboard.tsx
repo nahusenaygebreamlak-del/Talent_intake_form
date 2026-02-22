@@ -37,13 +37,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
 
     const [filters, setFilters] = useState<FilterState>({
         searchQuery: '',
-        role: '',
-        experienceYears: '',
-        educationLevel: '',
-        employmentStatus: '',
-        workType: '',
-        minRating: 0,
-        screeningStatus: ''
+        roles: [],
+        experienceYears: [],
+        educationLevel: [],
+        employmentStatus: [],
+        workType: [],
+        minRating: [],
+        screeningStatus: []
     });
 
     useEffect(() => {
@@ -191,13 +191,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
             );
         }
 
-        if (filters.role) filtered = filtered.filter(app => app.role === filters.role);
-        if (filters.experienceYears) filtered = filtered.filter(app => app.experience_years === filters.experienceYears);
-        if (filters.educationLevel) filtered = filtered.filter(app => app.education_level === filters.educationLevel);
-        if (filters.employmentStatus) filtered = filtered.filter(app => app.employment_status === filters.employmentStatus);
-        if (filters.workType) filtered = filtered.filter(app => app.work_type === filters.workType);
-        if (filters.minRating > 0) filtered = filtered.filter(app => (app.rating || 0) >= filters.minRating);
-        if (filters.screeningStatus) filtered = filtered.filter(app => app.screening_status === filters.screeningStatus);
+        if (filters.roles.length > 0) filtered = filtered.filter(app => filters.roles.includes(app.role));
+        if (filters.experienceYears.length > 0) filtered = filtered.filter(app => filters.experienceYears.includes(app.experience_years));
+        if (filters.educationLevel.length > 0) filtered = filtered.filter(app => filters.educationLevel.includes(app.education_level));
+        if (filters.employmentStatus.length > 0) filtered = filtered.filter(app => filters.employmentStatus.includes(app.employment_status));
+        if (filters.workType.length > 0) filtered = filtered.filter(app => filters.workType.includes(app.work_type));
+        if (filters.minRating.length > 0) filtered = filtered.filter(app => filters.minRating.includes(app.rating || 0));
+        if (filters.screeningStatus.length > 0) filtered = filtered.filter(app => filters.screeningStatus.includes(app.screening_status || 'pending'));
 
         if (sortConfig.key && sortConfig.direction) {
             filtered.sort((a, b) => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { PieChart as PieIcon, TrendingUp, BarChart3 } from 'lucide-react';
+import { PieChart as PieIcon, TrendingUp, BarChart3, Star } from 'lucide-react';
 import { Application } from '../../types';
 import { DashboardStats } from '../DashboardStats';
 
@@ -15,28 +15,26 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ applications }) 
     const roleEntries = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
     const chartColors = ['#D60D76', '#E7852F', '#8b5cf6', '#10b981', '#3b82f6', '#f43f5e', '#facc15', '#94a3b8'];
 
-    // 2. Time-Series Data (Applications per day for last 14 days)
-    const last14Days = Array.from({ length: 14 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - (13 - i));
-        return d.toISOString().split('T')[0];
-    });
-
-    const dailyCounts = last14Days.map(date => {
-        return applications.filter(app => app.created_at.startsWith(date)).length;
-    });
-
-    const maxDaily = Math.max(...dailyCounts, 5);
-    const linePath = dailyCounts.map((count, i) => {
-        const x = (i / (dailyCounts.length - 1)) * 400;
-        const y = 100 - (count / maxDaily) * 100;
-        return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-    }).join(' ');
 
     // 3. Conversion Data
     const screeningPassed = applications.filter(app => app.screening_status === 'screened_passed').length;
     const screeningFailed = applications.filter(app => app.screening_status === 'screened_failed').length;
     const pending = applications.filter(app => !app.screening_status || app.screening_status === 'pending').length;
+
+    // 4. Experience Distribution
+    const expRatios = ["0–1", "2–3", "4–6", "7+"].map(range => {
+        const count = applications.filter(app => app.experience_years === range).length;
+        return { range, count, percent: total > 0 ? (count / total) * 100 : 0 };
+    });
+
+    // 5. Quality Index by Role
+    const roleQuality = roleEntries.map(([role, count]) => {
+        const ratedApps = applications.filter(app => app.role === role && app.rating !== null && app.rating !== undefined);
+        const avgRating = ratedApps.length > 0
+            ? ratedApps.reduce((acc, app) => acc + (app.rating || 0), 0) / ratedApps.length
+            : 0;
+        return { role, count, avgRating };
+    }).sort((a, b) => b.avgRating - a.avgRating);
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -100,76 +98,8 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ applications }) 
                     </div>
                 </div>
 
-                {/* Time-Series Chart */}
-                <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-                    <div className="flex items-center gap-2 mb-8">
-                        <TrendingUp className="w-4 h-4 text-accent" />
-                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Application Trends (14d)</h3>
-                    </div>
-
-                    <div className="h-48 w-full relative pt-4">
-                        <svg viewBox="0 0 400 100" className="w-full h-full overflow-visible">
-                            {/* Grid Lines */}
-                            {[0, 25, 50, 75, 100].map(y => (
-                                <line key={y} x1="0" y1={y} x2="400" y2={y} stroke="#f1f5f9" strokeWidth="0.5" strokeDasharray="2,2" />
-                            ))}
-
-                            {/* Area Gradient with better falloff */}
-                            <path
-                                d={`${linePath} L 400 100 L 0 100 Z`}
-                                fill="url(#areaGradient)"
-                                className="opacity-20"
-                            />
-
-                            {/* The Line */}
-                            <path
-                                d={linePath}
-                                fill="none"
-                                stroke="url(#lineGradient)"
-                                strokeWidth="1.2"
-                                vectorEffect="non-scaling-stroke"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-
-                            {/* Data Points */}
-                            {dailyCounts.map((count, i) => {
-                                const x = (i / (dailyCounts.length - 1)) * 400;
-                                const y = 100 - (count / maxDaily) * 100;
-                                return (
-                                    <circle
-                                        key={i}
-                                        cx={x}
-                                        cy={y}
-                                        r="1.2"
-                                        fill="#D60D76"
-                                        style={{ vectorEffect: 'non-scaling-stroke' }}
-                                        className="transition-all hover:r-2 cursor-pointer"
-                                    />
-                                );
-                            })}
-
-                            <defs>
-                                <linearGradient id="lineGradient" x1="0" y1="0" x2="100" y2="0">
-                                    <stop offset="0%" stopColor="#D60D76" />
-                                    <stop offset="100%" stopColor="#E7852F" />
-                                </linearGradient>
-                                <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="100">
-                                    <stop offset="0%" stopColor="#D60D76" stopOpacity="0.4" />
-                                    <stop offset="100%" stopColor="#D60D76" stopOpacity="0" />
-                                </linearGradient>
-                            </defs>
-                        </svg>
-
-                        <div className="flex justify-between mt-4">
-                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{last14Days[0].split('-').slice(1).join('/')}</span>
-                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{last14Days[13].split('-').slice(1).join('/')}</span>
-                        </div>
-                    </div>
-                </div>
-
                 {/* Conversion Funnel */}
-                <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm lg:col-span-2">
+                <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
                     <div className="flex items-center gap-2 mb-8">
                         <BarChart3 className="w-4 h-4 text-violet-500" />
                         <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Screening Conversion Funnel</h3>
@@ -228,6 +158,62 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ applications }) 
                             <p className="text-2xl font-bold text-violet-500">{Math.round(((screeningPassed + screeningFailed) / total) * 100)}%</p>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Processing Rate</p>
                         </div>
+                    </div>
+                </div>
+
+
+
+
+                {/* Experience Distribution */}
+                <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-8">
+                        <TrendingUp className="w-4 h-4 text-primary" />
+                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Experience Distribution</h3>
+                    </div>
+
+                    <div className="space-y-6">
+                        {expRatios.map(item => (
+                            <div key={item.range} className="space-y-2">
+                                <div className="flex items-center justify-between text-[10px] font-bold">
+                                    <span className="text-slate-600">{item.range} Years</span>
+                                    <span className="text-slate-400">{item.count} Candidates ({Math.round(item.percent)}%)</span>
+                                </div>
+                                <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-primary transition-all duration-1000"
+                                        style={{ width: `${item.percent}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Quality Index by Role */}
+                <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-8">
+                        <BarChart3 className="w-4 h-4 text-accent" />
+                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Role Quality Index</h3>
+                    </div>
+
+                    <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
+                        {roleQuality.slice(0, 6).map((item, i) => (
+                            <div key={item.role} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-6 h-6 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 shadow-sm">
+                                        #{i + 1}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-slate-800 truncate">{item.role}</p>
+                                        <p className="text-[9px] font-medium text-slate-400">{item.count} Candidates</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
+                                    <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                                    <span className="text-[10px] font-bold text-slate-700">{item.avgRating.toFixed(1)}</span>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
