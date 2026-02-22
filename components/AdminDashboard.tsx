@@ -361,6 +361,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToForm, on
                         window.history.replaceState({}, '', url);
                     }}
                     onRate={(r) => handleRate(selectedCandidate.id, r)}
+                    onStatusUpdate={(s) => handleStatusUpdate(selectedCandidate.id, s)}
+                    userRole={userRole}
                 />
             )}
 

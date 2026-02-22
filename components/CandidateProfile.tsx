@@ -1,9 +1,9 @@
 import React from 'react';
 import {
     Mail, Phone, User, Briefcase, GraduationCap,
-    Linkedin, Globe, Share2, X, Eye
+    Linkedin, Globe, Share2, X, Eye, Check, AlertCircle, Clock
 } from 'lucide-react';
-import { Application } from '../types';
+import { Application, ScreeningStatus, UserRole } from '../types';
 import { StarRating } from './StarRating';
 import { supabase } from '../supabase';
 
@@ -11,9 +11,17 @@ interface CandidateProfileProps {
     application: Application;
     onClose: () => void;
     onRate: (rating: number) => void;
+    onStatusUpdate: (status: ScreeningStatus) => void;
+    userRole: UserRole;
 }
 
-export const CandidateProfile: React.FC<CandidateProfileProps> = ({ application, onClose, onRate }) => {
+export const CandidateProfile: React.FC<CandidateProfileProps> = ({
+    application,
+    onClose,
+    onRate,
+    onStatusUpdate,
+    userRole
+}) => {
     const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
     const [isLoadingUrl, setIsLoadingUrl] = React.useState(false);
 
@@ -150,6 +158,54 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ application,
                                     </span>
                                 </div>
 
+                                <div className="mt-6 pt-6 border-t border-slate-200/60 flex items-center justify-between">
+                                    <div className="flex flex-col gap-1">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Screening Result</p>
+                                        <div className="flex items-center gap-2">
+                                            {application.screening_status === 'screened_passed' ? (
+                                                <div className="flex items-center gap-1.5 text-green-600">
+                                                    <Check className="w-4 h-4" />
+                                                    <span className="text-sm font-bold">Passed Screening</span>
+                                                </div>
+                                            ) : application.screening_status === 'screened_failed' ? (
+                                                <div className="flex items-center gap-1.5 text-red-600">
+                                                    <X className="w-4 h-4" />
+                                                    <span className="text-sm font-bold">Failed Screening</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-1.5 text-slate-400">
+                                                    <Clock className="w-4 h-4" />
+                                                    <span className="text-sm font-bold tracking-tight">Pending Screening</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {userRole !== 'guest' && (
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => onStatusUpdate('screened_passed')}
+                                                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${application.screening_status === 'screened_passed'
+                                                        ? 'bg-green-500 text-white border-green-500 shadow-lg shadow-green-500/20'
+                                                        : 'bg-white text-slate-400 border-slate-200 hover:border-green-500 hover:text-green-500'
+                                                    }`}
+                                            >
+                                                <Check className="w-3.5 h-3.5" />
+                                                Pass
+                                            </button>
+                                            <button
+                                                onClick={() => onStatusUpdate('screened_failed')}
+                                                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${application.screening_status === 'screened_failed'
+                                                        ? 'bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20'
+                                                        : 'bg-white text-slate-400 border-slate-200 hover:border-red-500 hover:text-red-500'
+                                                    }`}
+                                            >
+                                                <X className="w-3.5 h-3.5" />
+                                                Fail
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </section>
 
                             {/* Contact Info Section */}
