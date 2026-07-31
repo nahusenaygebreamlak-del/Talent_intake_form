@@ -123,7 +123,6 @@ export const INITIAL_DATA = {
   fullName: "",
   phoneNumber: "",
   email: "",
-  afriworkEmail: "",
   role: "",
   otherRoleSpecify: "",
   experienceYears: "",

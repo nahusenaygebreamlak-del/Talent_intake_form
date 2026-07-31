@@ -3,7 +3,6 @@ export interface FormData {
   fullName: string;
   phoneNumber: string;
   email: string;
-  afriworkEmail: string;
 
   // Section 2
   role: string;

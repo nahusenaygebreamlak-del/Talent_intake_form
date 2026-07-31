@@ -269,7 +269,6 @@ function App() {
             full_name: formData.fullName,
             phone_number: formData.phoneNumber,
             email: formData.email,
-            afriwork_email: formData.afriworkEmail,
             role: formData.role,
             other_role_specify: formData.otherRoleSpecify,
             experience_years: formData.experienceYears,
@@ -366,15 +365,6 @@ function App() {
           value={formData.email}
           onChange={e => updateData({ email: e.target.value })}
           error={errors.email}
-        />
-        <InputField
-          label="Afriwork Profile Email"
-          type="email"
-          placeholder="If different from above"
-          icon={Mail}
-          value={formData.afriworkEmail}
-          onChange={e => updateData({ afriworkEmail: e.target.value })}
-          error={errors.afriworkEmail}
         />
       </div>
     </Card>,
@@ -529,6 +519,8 @@ function App() {
           onChange={async (e) => {
             const file = e.target.files?.[0];
             if (file) {
+              let progressInterval: ReturnType<typeof setInterval> | undefined;
+
               updateData({ cvFile: file });
               setCvFilePath(null);
               setIsUploading(true);
@@ -538,7 +530,7 @@ function App() {
                 const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
 
                 // Simulate progress since standard upload doesn't provide it
-                const progressInterval = setInterval(() => {
+                progressInterval = setInterval(() => {
                   setUploadProgress(prev => (prev < 90 ? prev + 5 : prev));
                 }, 200);
 
@@ -546,19 +538,25 @@ function App() {
                   .from('cvs')
                   .upload(fileName, file);
 
-                clearInterval(progressInterval);
-
                 if (uploadError) {
                   throw uploadError;
                 }
 
                 setUploadProgress(100);
                 setCvFilePath(fileName);
-                delete errors.cvFile;
+                setErrors(prev => {
+                  const nextErrors = { ...prev };
+                  delete nextErrors.cvFile;
+                  return nextErrors;
+                });
               } catch (err) {
                 console.error('CV Upload error:', err);
+                setUploadProgress(0);
                 setErrors(prev => ({ ...prev, cvFile: 'Failed to upload CV. Please try again.' }));
               } finally {
+                if (progressInterval) {
+                  clearInterval(progressInterval);
+                }
                 setIsUploading(false);
               }
             }
@@ -626,7 +624,7 @@ function App() {
         </div>
       </div>
     </Card>
-  ], [formData, errors]); // Dependencies for useMemo
+  ], [formData, errors, uploadProgress, isUploading, cvFilePath]); // Dependencies for useMemo
 
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
