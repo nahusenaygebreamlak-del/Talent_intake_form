@@ -48,7 +48,7 @@ interface CardProps {
 // --- Components ---
 
 export const Card: React.FC<CardProps> = ({ children, className = "" }) => (
-  <div className={`bg-white rounded-lg p-6 md:p-8 flex flex-col h-full overflow-y-auto no-scrollbar ${className}`}>
+  <div className={`bg-white rounded-lg p-6 md:p-8 flex flex-col overflow-y-auto no-scrollbar ${className}`}>
     {children}
   </div>
 );

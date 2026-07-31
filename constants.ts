@@ -42,10 +42,10 @@ export const EDUCATION_LEVELS = [
 ];
 
 export const SALARY_RANGES = [
-  "Under 8,000",
-  "8,000–15,000",
-  "15,000–25,000",
-  "25,000+"
+  "25,000–40,000",
+  "40,000–50,000",
+  "50,000–70,000",
+  "70,000+"
 ];
 
 export const WORK_TYPES = ["On-site", "Hybrid", "Remote", "Any"];

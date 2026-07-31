@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import {
   User, Mail, Phone, Briefcase, GraduationCap, DollarSign,
   Linkedin, Globe, Upload, CheckCircle, ArrowRight, ArrowLeft, Check, UserCircle, LogOut, Settings
@@ -626,6 +626,26 @@ function App() {
     </Card>
   ], [formData, errors, uploadProgress, isUploading, cvFilePath]); // Dependencies for useMemo
 
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const activeSlide = container?.children.item(currentStep) as HTMLElement | null;
+
+    if (!container || !activeSlide) return;
+
+    const updateContainerHeight = () => {
+      container.style.height = `${activeSlide.scrollHeight}px`;
+    };
+
+    updateContainerHeight();
+
+    const resizeObserver = new ResizeObserver(updateContainerHeight);
+    resizeObserver.observe(activeSlide);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [currentStep, steps]);
+
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
   // Show login form if trying to access admin without auth
@@ -725,7 +745,7 @@ function App() {
         <div className="overflow-hidden rounded-2xl shadow-2xl bg-white border border-slate-100/50">
           <div
             ref={containerRef}
-            className="flex transition-transform duration-500 ease-in-out will-change-transform"
+            className="flex items-start transition-[transform,height] duration-500 ease-in-out will-change-transform"
             style={{
               transform: `translateX(-${(currentStep * 100) / totalSteps}%)`,
               width: `${totalSteps * 100}%`
